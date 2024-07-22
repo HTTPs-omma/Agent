@@ -13,7 +13,7 @@ type Agent struct {
 	os_install_date string //
 	os_tiemstamp    string //
 	UUID            string //
-
+	timstamp        string
 }
 
 func (anget *Agent) init() {
