@@ -37,7 +37,7 @@ func (agent *Agent) getSystemTime() time.Time {
 	return agent.os_SystemTime
 }
 
-func (agent *Agent) getOSName() string {
+func (agent *Agent) getOSName() Type.OSName {
 	return agent.os_name
 }
 
