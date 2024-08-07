@@ -1,4 +1,4 @@
-package model
+package Model
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 
 func Test_db(t *testing.T) {
 	os.Chdir("../")
+
+	fmt.Printf("gid : %d \n", os.Getgid())
 
 	tests := []struct {
 		name string

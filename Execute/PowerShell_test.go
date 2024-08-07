@@ -15,7 +15,7 @@ func TestPowerShell_execute(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		name:   "Powershell execute Test",
+		name:   "Powershell Execute Test",
 		fields: fields{isAvailable: true},
 		args:   args{commands: []string{"dir"}},
 	}

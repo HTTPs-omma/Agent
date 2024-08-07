@@ -3,7 +3,10 @@ package Extension
 import (
 	"github.com/elastic/go-sysinfo"
 	"github.com/elastic/go-sysinfo/types"
+	"strings"
 	"time"
+
+	"agent/Type"
 )
 
 type sysutils struct {
@@ -26,8 +29,28 @@ func (sys *sysutils) GetOsVersion() string {
 	return sys.osInfo.Version
 }
 
-func (sys *sysutils) GetPlatform() string {
-	return sys.osInfo.Platform
+/*
+*
+24.08.07
+테스트 진행 안됨.
+엄밀한 테스트가 필요함!!
+sys.osInfo.Platform 에서 나올 수 있는 모든 경우의 수를 봐야함.
+*/
+func (sys *sysutils) GetPlatform() Type.OSPLATFORM {
+	if strings.Contains(sys.osInfo.Platform, "Windows10") {
+		return Type.WINDOWS
+	}
+	if strings.Contains(sys.osInfo.Platform, "Ubuntu") {
+		return Type.UBUNTU
+	}
+	if strings.Contains(sys.osInfo.Platform, "Centos") {
+		return Type.CENTOS
+	}
+	if strings.Contains(sys.osInfo.Platform, "MAC") {
+		return Type.MACOS
+	}
+
+	return Type.UNKNOWN
 }
 
 func (sys *sysutils) GetFamily() string {
