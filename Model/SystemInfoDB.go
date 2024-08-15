@@ -10,6 +10,7 @@ type SystemInfoDB struct {
 }
 
 type DsystemInfoDB struct {
+	id            int
 	Uuid          string
 	HostName      string
 	OsName        string
@@ -55,37 +56,17 @@ func (s *SystemInfoDB) createTable() error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 
-	sqlCreateTrigger := `
-		CREATE TRIGGER IF NOT EXISTS set_createTime_ModificationTime
-		AFTER INSERT ON %s
-		FOR EACH ROW
-		BEGIN
-			UPDATE tableName SET
-				createTime = CURRENT_TIMESTAMP,
-				ModificationTime = CURRENT_TIMESTAMP
-				WHERE id = NEW.id;
-		END;
-	`
-	sqlCreateTrigger = fmt.Sprintf(sqlCreateTrigger, s.dbName)
-
-	sqlModifyTrigger := `
+	sqlModifyTrigger := fmt.Sprintf(`
 		CREATE TRIGGER IF NOT EXISTS update_ModificationTime
 		AFTER UPDATE ON %s
 		FOR EACH ROW
-		BEGIN
-			UPDATE SystemInfo SET
-				ModificationTime = CURRENT_TIMESTAMP
+		BEGIN	
+			UPDATE %s SET
+				updateAt = CURRENT_TIMESTAMP
 			WHERE id = NEW.id;
 		END;
-	`
-	sqlModifyTrigger = fmt.Sprintf(sqlModifyTrigger, s.dbName)
-
-	_, err = db.Exec(sqlCreateTrigger)
-	if err != nil {
-		return err
-	}
+	`, s.dbName, s.dbName)
 
 	_, err = db.Exec(sqlModifyTrigger)
 	if err != nil {
@@ -96,11 +77,8 @@ func (s *SystemInfoDB) createTable() error {
 }
 
 func (s *SystemInfoDB) insertValue(data *DsystemInfoDB) error {
-	err := s.createTable()
-	if err != nil {
-		return err
-	}
-	isExist, err := s.selectExists()
+	// 데이터 베이스에는 단 하나의 Row 만을 보장해야함
+	isExist, err := s.existRecord()
 	if err != nil {
 		return err
 	}
@@ -121,18 +99,9 @@ func (s *SystemInfoDB) insertValue(data *DsystemInfoDB) error {
 	query := fmt.Sprintf(`INSERT INTO %s (uuid, HostName,
        OsName, OsVersion, Family, Architecture, KernelVersion,
        BootTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, s.dbName)
-
-	_, errorss := db.Query(`NSERT INTO SystemInfo (uuid, HostName, 
-       OsName, OsVersion, Family, Architecture, KernelVersion,
-       BootTime) VALUES (?,""?, "", "", "", "", "", "")
-	`)
-
-	if errorss != nil {
-		fmt.Errorf("에러!")
-		return err
-	}
-
 	stmt, err := db.Prepare(query)
+	fmt.Println(query)
+	defer stmt.Close()
 	if err != nil {
 		return err
 	}
@@ -141,7 +110,7 @@ func (s *SystemInfoDB) insertValue(data *DsystemInfoDB) error {
 		data.OsVersion, data.Family, data.Architecture,
 		data.KernelVersion, data.BootTime)
 	//fmt.Println(rst.LastInsertId())
-	fmt.Println("debug=-===============")
+	//fmt.Println("debug=-===============")
 
 	if err != nil {
 		return err
@@ -161,8 +130,15 @@ func (s *SystemInfoDB) updateValue(data *DsystemInfoDB) error {
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`UPDATE %s SET uuid = ?, HostName = ?, OsName = ?, OsVersion = ?, Family = ?, Architecture = ?, KernelVersion = ?, BootTime = ?`, s.dbName)
-	_, err = db.Exec(query, data.Uuid, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime)
+	rows, err := s.selectValue()
+	if err != nil {
+		return err
+	}
+	row := rows[0]
+	data.Uuid = row.Uuid
+
+	query := fmt.Sprintf(`UPDATE %s SET HostName = ?, OsName = ?, OsVersion = ?, Family = ?, Architecture = ?, KernelVersion = ?, BootTime = ?`, s.dbName)
+	_, err = db.Exec(query, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime)
 	if err != nil {
 		return err
 	}
@@ -186,7 +162,7 @@ func (s *SystemInfoDB) deleteValue(uuid string) error {
 	return nil
 }
 
-func (s *SystemInfoDB) selectValue() (*DsystemInfoDB, error) {
+func (s *SystemInfoDB) selectValue() ([]DsystemInfoDB, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return nil, err
@@ -194,20 +170,33 @@ func (s *SystemInfoDB) selectValue() (*DsystemInfoDB, error) {
 	defer db.Close()
 
 	query := fmt.Sprintf(`SELECT * FROM %s `, s.dbName)
-	row := db.QueryRow(query)
-
-	var data DsystemInfoDB
-	err = row.Scan(&data.Uuid, &data.HostName, &data.OsName,
-		&data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion,
-		&data.BootTime, &data.createAt, &data.updateAt)
+	row, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
-	return &data, nil
+	var rows []DsystemInfoDB
+
+	for row.Next() {
+		var data DsystemInfoDB
+
+		err = row.Scan(&data.id, &data.Uuid, &data.HostName, &data.OsName,
+			&data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion,
+			&data.BootTime, &data.createAt, &data.updateAt)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, data)
+	}
+
+	return rows, nil
 }
 
-func (s *SystemInfoDB) selectExists() (bool, error) {
+/*
+*
+하나 이상의 row 행이 있는지 검사한다.
+*/
+func (s *SystemInfoDB) existRecord() (bool, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return false, err
