@@ -1,6 +1,7 @@
 package Model
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -134,6 +135,9 @@ func (s *SystemInfoDB) updateRecord(data *DsystemInfoDB) error {
 	if err != nil {
 		return err
 	}
+	if len(rows) == 0 {
+		return errors.New("SystemInfo 테이블에 저장된 데이터가 없습니다.")
+	}
 	row := rows[0]
 	data.Uuid = row.Uuid
 
@@ -169,7 +173,7 @@ func (s *SystemInfoDB) selectRecords() ([]DsystemInfoDB, error) {
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`SELECT * FROM %s `, s.dbName)
+	query := fmt.Sprintf(`SELECT * FROM %s`, s.dbName)
 	row, err := db.Query(query)
 	if err != nil {
 		return nil, err

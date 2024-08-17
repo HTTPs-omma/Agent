@@ -1,18 +1,5 @@
 
-### sqlite3 (삭제됨 : 크로스 컴파일을 지원을 안함)
-- go get github.com/mattn/go-sqlite3
 
-First of all check CGO_ENABLED value: ```go env CGO_ENABLED```
-Then try to update it using: ```go env -w CGO_ENABLED=<0 or1>```
-
-- go env -w CGO_ENABLED=1
-
-Second, you have installed gcc in golang
-- refer :  https://medium.com/@yaravind/go-sqlite-on-windows-f91ef2dacfe
-- if you have error that is ```exec: "gcc": executable file not found in %PATH%```, will follow refer method
-![dbtest](./img/dbtestImage.png)
-
-- cleanup : go clean -i -v -x github.com/mattn/go-sqlite3
 
 ### go-sysinfo
 ```go
@@ -33,5 +20,26 @@ go get github.com/elastic/go-sysinfo
 go get modernc.org/sqlite
 ```
 
+### wmi 
+- refer : https://github.com/yusufpapurcu/wmi
+- go get github.com/yusufpapurcu/wmi
+- 누군지 모르겠지만 친절하게 구현해놓음 굳
 
 
+
+-----
+## 삭제됨 
+### sqlite3 (삭제됨 : 크로스 컴파일을 지원을 안함)
+- go get github.com/mattn/go-sqlite3
+
+First of all check CGO_ENABLED value: ```go env CGO_ENABLED```
+Then try to update it using: ```go env -w CGO_ENABLED=<0 or1>```
+
+- go env -w CGO_ENABLED=1
+
+Second, you have installed gcc in golang
+- refer :  https://medium.com/@yaravind/go-sqlite-on-windows-f91ef2dacfe
+- if you have error that is ```exec: "gcc": executable file not found in %PATH%```, will follow refer method
+  ![dbtest](./img/dbtestImage.png)
+
+- cleanup : go clean -i -v -x github.com/mattn/go-sqlite3
