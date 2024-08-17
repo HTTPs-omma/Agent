@@ -93,7 +93,7 @@ func TestNewSystemInfoDB_insertRecord(t *testing.T) {
 				KernelVersion: sys.GetKernelVersion(),
 				BootTime:      sys.GetBootTime(),
 			}
-			err = s.insertValue(data)
+			err = s.insertRecord(data)
 			if err != nil {
 				t.Fatalf(s.dbName + " : insert Record 오류. Query 재 확인 \n" + err.Error())
 			}

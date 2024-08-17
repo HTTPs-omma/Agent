@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/yusufpapurcu/wmi"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -17,22 +18,24 @@ func NewApplicationDB() (metaTable *ApplicationDB) {
 }
 
 type DapplicationDB struct {
-	ID              int       // 내부 ID, 자동 증가
-	Name            string    // 제품 이름
-	Version         string    // 제품 버전
-	Language        string    // 제품의 언어
-	Vendor          string    // 제품 공급자
-	InstallDate2    string    // 설치 날짜
-	InstallLocation string    // 패키지 설치 위치
-	InstallSource   string    // 설치 소스 위치
-	PackageName     string    // 원래 패키지 이름
-	PackageCode     string    // 패키지 식별자
-	RegCompany      string    // 제품을 사용하는 것으로 등록된 회사 이름
-	RegOwner        string    // 제품을 사용하는 것으로 등록된 사용자 이름
-	URLInfoAbout    string    // 제품에 대한 정보가 제공되는 URL
-	Description     string    // 제품 설명
+	ID              int    // 내부 ID, 자동 증가
+	Name            string // 제품 이름
+	Version         string // 제품 버전
+	Language        string // 제품의 언어
+	Vendor          string // 제품 공급자
+	InstallDate2    string // 설치 날짜
+	InstallLocation string // 패키지 설치 위치
+	InstallSource   string // 설치 소스 위치
+	PackageName     string // 원래 패키지 이름
+	PackageCode     string // 패키지 식별자
+	RegCompany      string // 제품을 사용하는 것으로 등록된 회사 이름
+	RegOwner        string // 제품을 사용하는 것으로 등록된 사용자 이름
+	URLInfoAbout    string // 제품에 대한 정보가 제공되는 URL
+	Description     string // 제품 설명
+	isDeleted       bool
 	CreateAt        time.Time // 레코드 생성 시간
 	UpdateAt        time.Time // 레코드 업데이트 시간
+	deletedAt       time.Time
 }
 
 func (a *ApplicationDB) createTable() error {
@@ -53,15 +56,15 @@ func (a *ApplicationDB) createTable() error {
 			InstallLocation TEXT,                       -- 패키지 설치 위치
 			InstallSource TEXT,                         -- 설치 소스 위치
 			PackageName VARCHAR(255),                   -- 원래 패키지 이름
-			PackageCode VARCHAR(255) UNIQUE NOT NULL  	-- 패키지 식별자 UUID
+			PackageCode VARCHAR(255) UNIQUE NOT NULL,  	-- 패키지 식별자 UUID
 			RegCompany VARCHAR(255),                    -- 제품을 사용하는 것으로 등록된 회사 이름
 			RegOwner VARCHAR(255),                      -- 제품을 사용하는 것으로 등록된 사용자 이름
 			URLInfoAbout TEXT,                          -- 제품에 대한 정보가 제공되는 URL
 			Description TEXT,                           -- 제품 설명
-		    isDeleted bool, 							-- apllication 제거 여부를 파악함
+		    isDeleted bool DEFAULT FALSE, 							-- apllication 제거 여부를 파악함
 			createAt DATETIME DEFAULT CURRENT_TIMESTAMP, -- 레코드 생성 시간
 			updateAt DATETIME DEFAULT CURRENT_TIMESTAMP,  -- 레코드 업데이트 시간
-		    deletedAt DATETIME							-- 제거된 시간
+		    deletedAt DATETIME DEFAULT CURRENT_TIMESTAMP							-- 제거된 시간
 		);
 	`
 	sqlStmt = fmt.Sprintf(sqlStmt, a.dbName)
@@ -140,17 +143,26 @@ type Win32_Product struct {
 	Description     string // 제품 설명
 }
 
-func createQeruy() []Win32_Product {
+func getApplicationList() []Win32_Product {
 	var dst []Win32_Product
 	query := "SELECT Name, Version, Language, Vendor, InstallDate2, InstallLocation, InstallSource, PackageName, PackageCode, RegCompany, RegOwner, URLInfoAbout, Description FROM Win32_Product"
 	err := wmi.Query(query, &dst)
 	if err != nil {
 		log.Fatalf("wmi query failed: %v", err)
 	}
+	for i := range dst {
+		input := dst[i].PackageCode
+		if strings.HasPrefix(input, "{") && strings.HasSuffix(input, "}") {
+			input = strings.Replace(input, "{", "", 1)
+			input = strings.Replace(input, "}", "", 1)
+		}
+		dst[i].PackageCode = input
+	}
+
 	return dst
 }
 
-func (a *ApplicationDB) insertRecord(data *DapplicationDB) error {
+func (a *ApplicationDB) insertRecord(data DapplicationDB) error {
 	// ProductID 가 있는지 확인 후 중복되는 것이 없으면 insert 하기
 
 	db, err := getDBPtr()
@@ -164,13 +176,14 @@ func (a *ApplicationDB) insertRecord(data *DapplicationDB) error {
         RegOwner, URLInfoAbout, Description ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.dbName)
 
 	stmt, err := db.Prepare(query)
-	fmt.Println(query)
 	defer stmt.Close()
 	if err != nil {
 		return err
 	}
 
-	_, err = stmt.Exec(&data)
+	_, err = stmt.Exec(&data.Name, &data.Version, &data.Language, &data.Vendor,
+		&data.InstallDate2, &data.InstallLocation, &data.InstallSource, &data.PackageName,
+		&data.PackageCode, &data.RegCompany, &data.RegOwner, &data.URLInfoAbout, &data.Description)
 
 	if err != nil {
 		return err
@@ -183,22 +196,15 @@ func (a *ApplicationDB) insertRecord(data *DapplicationDB) error {
 selectRecords()를 통해 반환된 DsystemInfoDB 객체의 값을 수정한 후,
 수정된 객체를 updateRecord 함수의 매개변수로 전달합시오
 */
-func (a *ApplicationDB) updateRecord(data *DapplicationDB) error {
+func (a *ApplicationDB) updateByPackageCode(data *DapplicationDB) error {
 	db, err := getDBPtr()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	rows, err := a.selectRecords()
-	if err != nil {
-		return err
-	}
-	row := rows[0]
-	data. = row.Uuid
-
-	query := fmt.Sprintf(`UPDATE %s SET HostName = ?, OsName = ?, OsVersion = ?, Family = ?, Architecture = ?, KernelVersion = ?, BootTime = ?`, s.dbName)
-	_, err = db.Exec(query, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime)
+	query := fmt.Sprintf(`UPDATE %s SET Name = ?, Version = ?, Language = ?, Vendor = ?, InstallDate2 = ?, InstallLocation = ?, InstallSource = ?, PackageName = ?, RegCompany = ?, RegOwner = ?, URLInfoAbout = ?, Description = ? WHERE PackageCode = ?`, a.dbName)
+	_, err = db.Exec(query, data.Name, data.Version, data.Language, data.Vendor, data.InstallDate2, data.InstallLocation, data.InstallSource, data.PackageName, data.RegCompany, data.RegOwner, data.URLInfoAbout, data.Description, data.PackageCode)
 	if err != nil {
 		return err
 	}
@@ -206,44 +212,45 @@ func (a *ApplicationDB) updateRecord(data *DapplicationDB) error {
 	return nil
 }
 
-
-func (s *ApplicationDB) selectByPackageCode(packageCode string) (*DapplicationDB ,error) {
+func (s *ApplicationDB) selectByPackageCode(packageCode string) (*DapplicationDB, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE PackageCode = %s `, s.dbName, packageCode)
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE PackageCode = '%s' LIMIT 1`, s.dbName, packageCode)
 	row, err := db.Query(query)
+	defer row.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	var rows []DapplicationDB
+	var data DapplicationDB
 
-	for row.Next() {
-		var data DapplicationDB
-
-		err = row.Scan(&data)
-		if err != nil {
-			return nil, err
-		}
-		rows = append(rows, data)
+	if row.Next() == false {
+		return &DapplicationDB{PackageCode: "-1"}, nil
+	}
+	err = row.Scan(&data.ID, &data.Name, &data.Version, &data.Language, &data.Vendor,
+		&data.InstallDate2, &data.InstallLocation, &data.InstallSource, &data.PackageName,
+		&data.PackageCode, &data.RegCompany, &data.RegOwner, &data.URLInfoAbout, &data.Description,
+		&data.isDeleted, &data.CreateAt, &data.UpdateAt, &data.deletedAt)
+	if err != nil {
+		return nil, err
 	}
 
-	return rows, nil
+	return &data, nil
 }
 
-func (s *ApplicationDB) deleteRecord(uuid string) error {
+func (s *ApplicationDB) deleteByPackageCode(packageCode string) error {
 	db, err := getDBPtr()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`DELETE FROM %s WHERE Uuid = ?`, s.dbName)
-	_, err = db.Exec(query, uuid)
+	query := fmt.Sprintf(`DELETE FROM %s WHERE PackageCode = ?`, s.dbName)
+	_, err = db.Exec(query, packageCode)
 	if err != nil {
 		return err
 	}
@@ -251,7 +258,7 @@ func (s *ApplicationDB) deleteRecord(uuid string) error {
 	return nil
 }
 
-func (s *ApplicationDB) selectRecords() ([]DsystemInfoDB, error) {
+func (s *ApplicationDB) selectAllRecords() ([]DapplicationDB, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return nil, err
@@ -264,14 +271,15 @@ func (s *ApplicationDB) selectRecords() ([]DsystemInfoDB, error) {
 		return nil, err
 	}
 
-	var rows []DsystemInfoDB
+	var rows []DapplicationDB
 
 	for row.Next() {
-		var data DsystemInfoDB
+		var data DapplicationDB
 
-		err = row.Scan(&data.id, &data.Uuid, &data.HostName, &data.OsName,
-			&data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion,
-			&data.BootTime, &data.createAt, &data.updateAt)
+		err = row.Scan(&data.ID, &data.Name, &data.Version, &data.Language, &data.Vendor,
+			&data.InstallDate2, &data.InstallLocation, &data.InstallSource, &data.PackageName,
+			&data.PackageCode, &data.RegCompany, &data.RegOwner, &data.URLInfoAbout, &data.Description,
+			&data.isDeleted, &data.CreateAt, &data.UpdateAt, &data.deletedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -279,25 +287,4 @@ func (s *ApplicationDB) selectRecords() ([]DsystemInfoDB, error) {
 	}
 
 	return rows, nil
-}
-
-/*
-*
-하나 이상의 row 행이 있는지 검사한다.
-*/
-func (s *ApplicationDB) existRecord() (bool, error) {
-	db, err := getDBPtr()
-	if err != nil {
-		return false, err
-	}
-	defer db.Close()
-
-	query := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s)`, s.dbName)
-	var exists bool
-	err = db.QueryRow(query).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
 }
