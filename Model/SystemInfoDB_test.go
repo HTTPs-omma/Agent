@@ -144,7 +144,7 @@ func TestNewSystemInfoDB_selectRecord(t *testing.T) {
 			var err error
 			s := NewSystemInfoDB()
 
-			data, err := s.selectValue()
+			data, err := s.selectRecords()
 
 			if err != nil {
 				t.Fatalf(s.dbName + " : select 오류. Query 재 확인 \n" + err.Error())

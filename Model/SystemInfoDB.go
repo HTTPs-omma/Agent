@@ -76,14 +76,14 @@ func (s *SystemInfoDB) createTable() error {
 	return nil
 }
 
-func (s *SystemInfoDB) insertValue(data *DsystemInfoDB) error {
+func (s *SystemInfoDB) insertRecord(data *DsystemInfoDB) error {
 	// 데이터 베이스에는 단 하나의 Row 만을 보장해야함
 	isExist, err := s.existRecord()
 	if err != nil {
 		return err
 	}
 	if isExist == true {
-		err = s.updateValue(data)
+		err = s.updateRecord(data)
 		if err != nil {
 			return err
 		}
@@ -120,17 +120,17 @@ func (s *SystemInfoDB) insertValue(data *DsystemInfoDB) error {
 }
 
 /*
-selectValue()를 통해 반환된 DsystemInfoDB 객체의 값을 수정한 후,
-수정된 객체를 updateValue 함수의 매개변수로 전달합시오
+selectRecords()를 통해 반환된 DsystemInfoDB 객체의 값을 수정한 후,
+수정된 객체를 updateRecord 함수의 매개변수로 전달합시오
 */
-func (s *SystemInfoDB) updateValue(data *DsystemInfoDB) error {
+func (s *SystemInfoDB) updateRecord(data *DsystemInfoDB) error {
 	db, err := getDBPtr()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	rows, err := s.selectValue()
+	rows, err := s.selectRecords()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (s *SystemInfoDB) updateValue(data *DsystemInfoDB) error {
 	return nil
 }
 
-func (s *SystemInfoDB) deleteValue(uuid string) error {
+func (s *SystemInfoDB) deleteRecord(uuid string) error {
 	db, err := getDBPtr()
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func (s *SystemInfoDB) deleteValue(uuid string) error {
 	return nil
 }
 
-func (s *SystemInfoDB) selectValue() ([]DsystemInfoDB, error) {
+func (s *SystemInfoDB) selectRecords() ([]DsystemInfoDB, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return nil, err
