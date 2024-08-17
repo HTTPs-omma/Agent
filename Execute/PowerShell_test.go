@@ -15,9 +15,10 @@ func TestPowerShell_execute(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		name:   "Powershell Execute Test",
-		fields: fields{isAvailable: true},
-		args:   args{commands: []string{"dir"}},
+		{name: "Powershell Execute Test",
+			fields: fields{isAvailable: true},
+			args:   args{commands: []string{"dir", "cd ../", "dir"}},
+		},
 	}
 
 	for _, tt := range tests {
