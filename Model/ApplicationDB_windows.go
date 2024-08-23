@@ -61,10 +61,10 @@ func (a *ApplicationDB) createTable() error {
 			RegOwner VARCHAR(255),                      -- 제품을 사용하는 것으로 등록된 사용자 이름
 			URLInfoAbout TEXT,                          -- 제품에 대한 정보가 제공되는 URL
 			Description TEXT,                           -- 제품 설명
-		    isDeleted bool DEFAULT FALSE, 							-- apllication 제거 여부를 파악함
+		    isDeleted bool DEFAULT FALSE, 				-- apllication 제거 여부를 파악함
 			createAt DATETIME DEFAULT CURRENT_TIMESTAMP, -- 레코드 생성 시간
 			updateAt DATETIME DEFAULT CURRENT_TIMESTAMP,  -- 레코드 업데이트 시간
-		    deletedAt DATETIME DEFAULT CURRENT_TIMESTAMP							-- 제거된 시간
+		    deletedAt DATETIME DEFAULT CURRENT_TIMESTAMP	-- 제거된 시간
 		);
 	`
 	sqlStmt = fmt.Sprintf(sqlStmt, a.dbName)

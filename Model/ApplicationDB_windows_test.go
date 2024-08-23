@@ -151,3 +151,45 @@ func TestApplicationDB_CRUD(t1 *testing.T) {
 		})
 	}
 }
+
+//func TestApplicationDB_CreateAll(t1 *testing.T) {
+//	type fields struct {
+//		dbName string
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//	}{
+//		{name: "Test case 1"},
+//	}
+//	for _, tt := range tests {
+//		t1.Run(tt.name, func(t *testing.T) {
+//			// ============ Create 테스트 ================
+//			appdb := NewApplicationDB()
+//			appdb.createTable()
+//
+//			wind32 := getApplicationList()
+//			for _, wind := range wind32 {
+//				data := DapplicationDB{}
+//				data.Name = wind.Name
+//				data.Description = wind.Description
+//				data.Version = wind.Version
+//				data.Vendor = wind.Vendor
+//				data.InstallDate2 = wind.InstallDate2
+//				data.InstallLocation = wind.InstallLocation
+//				data.InstallSource = wind.InstallSource
+//				data.Language = wind.Language
+//				data.PackageCode = wind.PackageCode
+//				data.PackageName = wind.PackageName
+//				data.RegCompany = wind.RegCompany
+//				data.RegOwner = wind.RegOwner
+//				data.URLInfoAbout = wind.URLInfoAbout
+//
+//				err := appdb.insertRecord(data)
+//				if err != nil {
+//					t.Fatalf(appdb.dbName + " : insert 에러\n" + err.Error())
+//				}
+//			}
+//		})
+//	}
+//}
