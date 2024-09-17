@@ -1,6 +1,8 @@
 package main
 
 import (
+	"agent/Core"
+	"agent/Execute"
 	"agent/Extension"
 	"agent/Model"
 	"agent/Network"
@@ -23,6 +25,12 @@ type OperationLogDocument struct {
 	Log             string             `bson:"log"`
 	Command         string             `bson:"command"` // Command 필드로 변경
 }
+
+const (
+	EXIT_SUCCESS = 1
+	EXIT_Unknown = 0
+	EXIT_FAIL    = -1
+)
 
 func main() {
 	err := godotenv.Load()
@@ -138,7 +146,7 @@ func main() {
 
 	hsItem = HSProtocol.HS{
 		ProtocolID:     HSProtocol.HTTP, //
-		HealthStatus:   HSProtocol.WAIT, //
+		HealthStatus:   HSProtocol.RUN,  //
 		Command:        HSProtocol.UPDATE_AGENT_STATUS,
 		Identification: 12345, // 아직 구현 안함
 		Checksum:       0,     // 자동으로 채워줌
@@ -155,9 +163,113 @@ func main() {
 		fmt.Println("sysinfo 정보 송신 실패")
 	}
 
+	// stage 3 : 반복 실행
 	for {
+		time.Sleep(3 * time.Second)
 
-		break
+		uuid, err := HSProtocol.HexStringToByteArray(sysuil.GetUniqueID())
+		if err != nil {
+			break
+		}
+
+		hsItem := HSProtocol.HS{
+			ProtocolID:     1,
+			HealthStatus:   0,
+			Command:        HSProtocol.FETCH_INSTRUCTION,
+			Identification: 12345,
+			Checksum:       6789,
+			TotalLength:    50,
+			//UUID:           [16]byte{0xc3, 0xcb, 0x84, 0x23, 0x34, 0x16, 0x49, 0x76, 0x94, 0x56, 0x9d, 0x75, 0x9a, 0x8a, 0x13, 0xe7},
+			UUID: uuid,
+			Data: []byte{},
+		}
+
+		//fmt.Println(uuid)
+
+		inst := &Core.InstructionData{}
+		ack, err := Network.SendHTTPRequest(hsItem)
+		//fmt.Println(ack, err)
+		instD, err := inst.GetInstData(ack.Data)
+		if err != nil {
+			fmt.Println("Error : ", err)
+			continue
+		}
+
+		if len(ack.Data) < 1 {
+			continue
+		}
+		//fmt.Println(instD.Command)
+
+		shell := Execute.Cmd{}
+		cmdLog, err := shell.Execute(instD.Command)
+		fmt.Println(cmdLog)
+		if err != nil {
+			fmt.Println("Error : ", err)
+
+			logD, err := json.Marshal(&OperationLogDocument{
+				ID:              primitive.ObjectID{},
+				Command:         instD.Command,
+				AgentUUID:       "937640a858ad48e9bc2787e8c4456ced",
+				ProcedureID:     instD.ID,
+				InstructionUUID: "",
+				ConductAt:       time.Now(),
+				Log:             "",
+				ExitCode:        EXIT_FAIL,
+			})
+			if err != nil {
+				fmt.Println("Error : ", err)
+				continue
+			}
+
+			hsItem = HSProtocol.HS{
+				ProtocolID:     1,
+				HealthStatus:   0,
+				Command:        HSProtocol.SEND_PROCEDURE_LOG,
+				Identification: 12345,
+				Checksum:       6789,
+				TotalLength:    50,
+				//UUID:           [16]byte{0xc3, 0xcb, 0x84, 0x23, 0x34, 0x16, 0x49, 0x76, 0x94, 0x56, 0x9d, 0x75, 0x9a, 0x8a, 0x13, 0xe7},
+				UUID: uuid,
+				Data: logD,
+			}
+			ack, err := Network.SendHTTPRequest(hsItem)
+			fmt.Printf("commmand: %b \n", ack.Command)
+			continue
+		}
+
+		logD, err := json.Marshal(&OperationLogDocument{
+			ID:              primitive.ObjectID{},
+			Command:         instD.Command,
+			AgentUUID:       "937640a858ad48e9bc2787e8c4456ced",
+			ProcedureID:     instD.ID,
+			InstructionUUID: "",
+			ConductAt:       time.Now(),
+			Log:             cmdLog,
+			ExitCode:        EXIT_SUCCESS,
+		})
+		if err != nil {
+			fmt.Println("Error : ", err)
+		}
+
+		hsItem = HSProtocol.HS{
+			ProtocolID:     1,
+			HealthStatus:   0,
+			Command:        HSProtocol.SEND_PROCEDURE_LOG,
+			Identification: 12345,
+			Checksum:       6789,
+			TotalLength:    50,
+			//UUID:           [16]byte{0xc3, 0xcb, 0x84, 0x23, 0x34, 0x16, 0x49, 0x76, 0x94, 0x56, 0x9d, 0x75, 0x9a, 0x8a, 0x13, 0xe7},
+			UUID: uuid,
+			Data: logD,
+		}
+		ack, err = Network.SendHTTPRequest(hsItem)
+		//fmt.Println(ack, err)
+
+		cmdLog, err = shell.Execute(instD.Cleanup)
+		//fmt.Println(cmdLog)
+		if err != nil {
+			fmt.Println("Error : ", err)
+		}
 	}
 }
 

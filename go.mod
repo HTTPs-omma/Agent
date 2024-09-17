@@ -10,6 +10,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/yusufpapurcu/wmi v1.2.4
 	go.mongodb.org/mongo-driver v1.17.0
+	golang.org/x/text v0.18.0
 	gopkg.in/yaml.v3 v3.0.0
 	modernc.org/sqlite v1.31.1
 )

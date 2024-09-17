@@ -1,6 +1,13 @@
 package Execute
 
-import "os/exec"
+import (
+	"fmt"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/transform"
+	"io/ioutil"
+	"os/exec"
+	"strings"
+)
 
 type Cmd struct {
 	isAvailable bool
@@ -11,11 +18,25 @@ type Cmd struct {
 */
 func (c *Cmd) Execute(command string) (string, error) {
 	// setting
-	cmd := exec.Command("cmd", "-Command", command)
+	fmt.Println("cmd : " + command)
+	cmd := exec.Command("cmd", "/C", command)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
 
-	return string(output), nil
+	decodedOutput, err := decodeCP949(output)
+	if err != nil {
+		return "", err
+	}
+
+	return string(decodedOutput), nil
+}
+func decodeCP949(input []byte) (string, error) {
+	reader := transform.NewReader(strings.NewReader(string(input)), korean.EUCKR.NewDecoder())
+	decoded, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
 }
