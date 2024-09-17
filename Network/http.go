@@ -42,8 +42,7 @@ func SendHTTPRequest(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 		fmt.Println("Error : ", err)
 	}
 
-	hsmgr := HSProtocol.NewHSProtocolManager()
-	ack, err := hsmgr.Parsing(body)
+	ack, err := HSMgr.Parsing(body)
 	if err != nil {
 		fmt.Println("Error : ", err)
 	}

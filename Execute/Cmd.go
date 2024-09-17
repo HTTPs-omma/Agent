@@ -9,7 +9,7 @@ type Cmd struct {
 /*
 파워셀을 빠르게 사용해보자 : https://stackoverflow.com/questions/65331558/how-to-call-powershell-from-go-faster
 */
-func (c *Cmd) execute(command string) (string, error) {
+func (c *Cmd) Execute(command string) (string, error) {
 	// setting
 	cmd := exec.Command("cmd", "-Command", command)
 	output, err := cmd.Output()
