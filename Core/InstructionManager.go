@@ -1,7 +1,6 @@
 package Core
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +27,7 @@ func (cd *InstructionData) ToBytes() ([]byte, error) {
 func (cd *InstructionData) GetInstData(bdata []byte) (*InstructionData, error) {
 	// 새로운 InstructionData 인스턴스를 생성
 	var instData InstructionData
-	fmt.Println("bytes : ", bdata)
+	//fmt.Println("bytes : ", bdata)
 
 	// YAML 데이터를 InstructionData 구조체로 역직렬화
 	err := yaml.Unmarshal(bdata, &instData)

@@ -283,7 +283,7 @@ func (s *ApplicationDB) SelectByPackageCode(packageCode string) (*DapplicationDB
 	if row.Next() == false {
 		return &DapplicationDB{PackageCode: "-1"}, nil
 	}
-	err = row.Scan(&data.ID, &data.Name, &data.AgentUUID, &data.Version, &data.Language, &data.Vendor,
+	err = row.Scan(&data.ID, &data.AgentUUID, &data.Name, &data.Version, &data.Language, &data.Vendor,
 		&data.InstallDate2, &data.InstallLocation, &data.InstallSource, &data.PackageName,
 		&data.PackageCode, &data.RegCompany, &data.RegOwner, &data.URLInfoAbout, &data.Description,
 		&data.IsDeleted, &data.CreateAt, &data.UpdateAt, &data.DeletedAt)
@@ -345,7 +345,7 @@ func (s *ApplicationDB) SelectAllRecords() ([]DapplicationDB, error) {
 	for row.Next() {
 		var data DapplicationDB
 
-		err = row.Scan(&data.ID, &data.Name, &data.AgentUUID, &data.Version, &data.Language, &data.Vendor,
+		err = row.Scan(&data.ID, &data.AgentUUID, &data.Name, &data.Version, &data.Language, &data.Vendor,
 			&data.InstallDate2, &data.InstallLocation, &data.InstallSource, &data.PackageName,
 			&data.PackageCode, &data.RegCompany, &data.RegOwner, &data.URLInfoAbout, &data.Description,
 			&data.IsDeleted, &data.CreateAt, &data.UpdateAt, &data.DeletedAt)

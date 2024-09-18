@@ -146,7 +146,7 @@ func main() {
 
 	hsItem = HSProtocol.HS{
 		ProtocolID:     HSProtocol.HTTP, //
-		HealthStatus:   HSProtocol.RUN,  //
+		HealthStatus:   HSProtocol.NEW,  //
 		Command:        HSProtocol.UPDATE_AGENT_STATUS,
 		Identification: 12345, // 아직 구현 안함
 		Checksum:       0,     // 자동으로 채워줌
@@ -165,6 +165,7 @@ func main() {
 
 	// stage 3 : 반복 실행
 	for {
+		fmt.Print("fetch instruction : ")
 		time.Sleep(3 * time.Second)
 
 		uuid, err := HSProtocol.HexStringToByteArray(sysuil.GetUniqueID())
@@ -184,8 +185,6 @@ func main() {
 			Data: []byte{},
 		}
 
-		//fmt.Println(uuid)
-
 		inst := &Core.InstructionData{}
 		ack, err := Network.SendHTTPRequest(hsItem)
 		//fmt.Println(ack, err)
@@ -196,13 +195,33 @@ func main() {
 		}
 
 		if len(ack.Data) < 1 {
+			fmt.Println("... NoData Wait")
 			continue
 		}
-		//fmt.Println(instD.Command)
+		fmt.Println("... success")
+
+		hsItem = HSProtocol.HS{
+			ProtocolID:     HSProtocol.HTTP, //
+			HealthStatus:   HSProtocol.RUN,  //
+			Command:        HSProtocol.UPDATE_AGENT_STATUS,
+			Identification: 12345, // 아직 구현 안함
+			Checksum:       0,     // 자동으로 채워줌
+			TotalLength:    0,     // 자동으로 채워줌
+			UUID:           uuid,
+			Data:           []byte{},
+		}
+		ack, err = Network.SendHTTPRequest(hsItem)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if ack.Command == HSProtocol.ERROR_ACK {
+			fmt.Println("Status 정보 변경 실패")
+		}
 
 		shell := Execute.Cmd{}
 		cmdLog, err := shell.Execute(instD.Command)
-		fmt.Println(cmdLog)
+		fmt.Println("cmdLog : " + cmdLog)
 		if err != nil {
 			fmt.Println("Error : ", err)
 
@@ -269,6 +288,25 @@ func main() {
 		//fmt.Println(cmdLog)
 		if err != nil {
 			fmt.Println("Error : ", err)
+		}
+
+		hsItem = HSProtocol.HS{
+			ProtocolID:     HSProtocol.HTTP, //
+			HealthStatus:   HSProtocol.WAIT, //
+			Command:        HSProtocol.UPDATE_AGENT_STATUS,
+			Identification: 12345, // 아직 구현 안함
+			Checksum:       0,     // 자동으로 채워줌
+			TotalLength:    0,     // 자동으로 채워줌
+			UUID:           uuid,
+			Data:           []byte{},
+		}
+		ack, err = Network.SendHTTPRequest(hsItem)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if ack.Command == HSProtocol.ERROR_ACK {
+			fmt.Println("Status 정보 변경 실패")
 		}
 	}
 }
