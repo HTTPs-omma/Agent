@@ -11,8 +11,7 @@ import (
 
 //https://agent
 
-func SendHTTPRequest(hs HSProtocol.HS) (*HSProtocol.HS, error) {
-
+func sendPacketByHttp(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 	// HS 객체를 직렬화 (예: ToBytes 함수 사용)
 	HSMgr := HSProtocol.NewHSProtocolManager()
 	data, err := HSMgr.ToBytes(&hs)
@@ -48,16 +47,4 @@ func SendHTTPRequest(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 	}
 
 	return ack, nil
-
-	//instD, err := inst.GetInstData(ack.Data)
-	//if err != nil {
-	//	fmt.Println("Error : ", err)
-	//}
-	//
-	//shell := Execute.PowerShell{}
-	//cmdLog, err := shell.Execute(instD.Command)
-	//if err != nil {
-	//
-	//}
-	//shell.Execute(instD.Cleanup)
 }

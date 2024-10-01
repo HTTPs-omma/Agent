@@ -8,6 +8,7 @@ type InstructionData struct {
 	ID               string `yaml:"id"`
 	MITREID          string `yaml:"MITRE_ID"`
 	Description      string `yaml:"Description"`
+	Escalation       bool   `yaml:"Escalation"`
 	Tool             string `yaml:"tool"`
 	RequisiteCommand string `yaml:"requisite_command"`
 	Command          string `yaml:"command"`

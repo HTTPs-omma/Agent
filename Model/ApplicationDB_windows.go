@@ -14,10 +14,13 @@ type ApplicationDB struct {
 	dbName string
 }
 
-func NewApplicationDB() (metaTable *ApplicationDB) {
+func NewApplicationDB() (metaTable *ApplicationDB, err error) {
 	appDB := &ApplicationDB{"Application"}
-	appDB.CreateTable()
-	return appDB
+	err = appDB.CreateTable()
+	if err != nil {
+		return nil, err
+	}
+	return appDB, nil
 }
 
 type DapplicationDB struct {
@@ -166,7 +169,7 @@ type Win32_Product struct {
 // CreateAt        time.Time // 레코드 생성 시간
 // UpdateAt        time.Time // 레코드 업데이트 시간
 // deletedAt       time.Time
-func GetApplicationList() []DapplicationDB {
+func GetApplicationList_WMI() []DapplicationDB {
 	sysuil, err := Extension.NewSysutils()
 	if err != nil {
 		return nil
@@ -180,6 +183,7 @@ func GetApplicationList() []DapplicationDB {
 	if err != nil {
 		log.Fatalf("wmi query failed: %v", err)
 	}
+
 	for i := range win32List {
 		input := win32List[i].PackageCode
 		if strings.HasPrefix(input, "{") && strings.HasSuffix(input, "}") {
@@ -212,6 +216,22 @@ func GetApplicationList() []DapplicationDB {
 	}
 
 	return applist
+}
+
+const (
+	PROGRAMEPATH_x64 string = "C:\\Program Files"
+	PROGRAMEPATH_x86 string = "C:\\Program Files (x86)"
+	STARTPROGRAGE           = "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs"
+	STARTMENU               = "C:\\ProgramData\\Microsoft\\Windows\\Start Menu"
+)
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *ApplicationDB) InsertRecord(data DapplicationDB) error {

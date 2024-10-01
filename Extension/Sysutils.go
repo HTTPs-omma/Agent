@@ -101,8 +101,9 @@ func (sys *sysutils) GetUniqueID() string {
 }
 
 func (sys *sysutils) GetBootTime() time.Time {
-	return sys.hostInfo.BootTime
+	return sys.hostInfo.BootTime.UTC()
 }
+
 func (sys *sysutils) GetIPs() []string {
 	return sys.hostInfo.IPs
 }

@@ -29,7 +29,7 @@ func TestSystemInfoDB_createTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			s := NewSystemInfoDB()
-			s.createTable()
+			s.CreateTable()
 			if err != nil {
 				t.Fatalf(s.dbName + " : DB를 생성할 수 없습니다. \n" + err.Error())
 			}

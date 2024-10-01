@@ -102,7 +102,7 @@ func (s *SystemInfoDB) InsertRecord(data *DsystemInfoDB) error {
        OsName, OsVersion, Family, Architecture, KernelVersion,
        BootTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, s.dbName)
 	stmt, err := db.Prepare(query)
-	fmt.Println(query)
+	//fmt.Println(query)
 	defer stmt.Close()
 	if err != nil {
 		return err
