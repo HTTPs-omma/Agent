@@ -20,6 +20,8 @@ type DsystemInfoDB struct {
 	Architecture  string    `json:"architecture"`
 	KernelVersion string    `json:"kernel_version"`
 	BootTime      time.Time `json:"boot_time"`
+	IP            string    `json:"ip"`  // IP 필드 추가
+	MAC           string    `json:"mac"` // MAC 필드 추가
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -48,6 +50,8 @@ func (s *SystemInfoDB) CreateTable() error {
 			Architecture string,
 			KernelVersion string,
 			BootTime DATETIME,
+			IP string,                               -- IP 추가
+			MAC string,                              -- MAC 추가
 			createAt DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updateAt DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
@@ -79,7 +83,7 @@ func (s *SystemInfoDB) CreateTable() error {
 }
 
 func (s *SystemInfoDB) InsertRecord(data *DsystemInfoDB) error {
-	// 데이터 베이스에는 단 하나의 Row 만을 보장해야함
+	// 데이터베이스에는 단 하나의 Row만을 보장해야 함
 	isExist, err := s.existRecord()
 	if err != nil {
 		return err
@@ -98,21 +102,16 @@ func (s *SystemInfoDB) InsertRecord(data *DsystemInfoDB) error {
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`INSERT INTO %s (uuid, HostName,
-       OsName, OsVersion, Family, Architecture, KernelVersion,
-       BootTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, s.dbName)
+	query := fmt.Sprintf(`INSERT INTO %s (uuid, HostName, OsName, OsVersion, Family, Architecture, KernelVersion, BootTime, IP, MAC) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, s.dbName)
 	stmt, err := db.Prepare(query)
-	//fmt.Println(query)
 	defer stmt.Close()
+
 	if err != nil {
 		return err
 	}
 
-	_, err = stmt.Exec(data.Uuid, data.HostName, data.OsName,
-		data.OsVersion, data.Family, data.Architecture,
-		data.KernelVersion, data.BootTime)
-	//fmt.Println(rst.LastInsertId())
-	//fmt.Println("debug=-===============")
+	_, err = stmt.Exec(data.Uuid, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime, data.IP, data.MAC)
 
 	if err != nil {
 		return err
@@ -123,7 +122,7 @@ func (s *SystemInfoDB) InsertRecord(data *DsystemInfoDB) error {
 
 /*
 selectRecords()를 통해 반환된 DsystemInfoDB 객체의 값을 수정한 후,
-수정된 객체를 updateRecord 함수의 매개변수로 전달합시오
+수정된 객체를 updateRecord 함수의 매개변수로 전달하십시오
 */
 func (s *SystemInfoDB) UpdateRecord(data *DsystemInfoDB) error {
 	db, err := getDBPtr()
@@ -142,8 +141,8 @@ func (s *SystemInfoDB) UpdateRecord(data *DsystemInfoDB) error {
 	row := rows[0]
 	data.Uuid = row.Uuid
 
-	query := fmt.Sprintf(`UPDATE %s SET HostName = ?, OsName = ?, OsVersion = ?, Family = ?, Architecture = ?, KernelVersion = ?, BootTime = ?`, s.dbName)
-	_, err = db.Exec(query, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime)
+	query := fmt.Sprintf(`UPDATE %s SET HostName = ?, OsName = ?, OsVersion = ?, Family = ?, Architecture = ?, KernelVersion = ?, BootTime = ?, IP = ?, MAC = ?`, s.dbName)
+	_, err = db.Exec(query, data.HostName, data.OsName, data.OsVersion, data.Family, data.Architecture, data.KernelVersion, data.BootTime, data.IP, data.MAC)
 	if err != nil {
 		return err
 	}
@@ -152,24 +151,8 @@ func (s *SystemInfoDB) UpdateRecord(data *DsystemInfoDB) error {
 }
 
 func GetSystemInfoData() {
-
+	// 여기에 시스템 정보를 가져오는 로직을 추가
 }
-
-//func (s *SystemInfoDB) DeleteRecord(uuid string) error {
-//	db, err := getDBPtr()
-//	if err != nil {
-//		return err
-//	}
-//	defer db.Close()
-//
-//	query := fmt.Sprintf(`DELETE FROM %s WHERE Uuid = ?`, s.dbName)
-//	_, err = db.Exec(query, uuid)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
 
 func (s *SystemInfoDB) SelectRecords() ([]DsystemInfoDB, error) {
 	db, err := getDBPtr()
@@ -189,9 +172,7 @@ func (s *SystemInfoDB) SelectRecords() ([]DsystemInfoDB, error) {
 	for row.Next() {
 		var data DsystemInfoDB
 
-		err = row.Scan(&data.ID, &data.Uuid, &data.HostName, &data.OsName,
-			&data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion,
-			&data.BootTime, &data.CreatedAt, &data.UpdatedAt)
+		err = row.Scan(&data.ID, &data.Uuid, &data.HostName, &data.OsName, &data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion, &data.BootTime, &data.IP, &data.MAC, &data.CreatedAt, &data.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
