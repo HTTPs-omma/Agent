@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type sysutils struct {
+type Sysutils struct {
 	host       types.Host
 	hostInfo   types.HostInfo
 	cputime    types.CPUTimes
@@ -34,15 +34,15 @@ const (
 	HTTP PROTOCOL = "HTTP"
 )
 
-func (sys *sysutils) GetHostName() string {
+func (sys *Sysutils) GetHostName() string {
 	return sys.hostInfo.Hostname
 }
 
-func (sys *sysutils) GetOsName() string {
+func (sys *Sysutils) GetOsName() string {
 	return sys.osInfo.Name
 }
 
-func (sys *sysutils) GetOsVersion() string {
+func (sys *Sysutils) GetOsVersion() string {
 	return sys.osInfo.Version
 }
 
@@ -53,7 +53,7 @@ func (sys *sysutils) GetOsVersion() string {
 엄밀한 테스트가 필요함!!
 sys.osInfo.Platform 에서 나올 수 있는 모든 경우의 수를 봐야함.
 */
-func (sys *sysutils) GetPlatform() OSPLATFORM {
+func (sys *Sysutils) GetPlatform() OSPLATFORM {
 	if strings.Contains(sys.osInfo.Platform, "Windows10") {
 		return WINDOWS
 	}
@@ -70,71 +70,71 @@ func (sys *sysutils) GetPlatform() OSPLATFORM {
 	return UNKNOWN
 }
 
-func (sys *sysutils) GetFamily() string {
+func (sys *Sysutils) GetFamily() string {
 	return sys.osInfo.Family
 }
 
-func (sys *sysutils) GetMemoryTotal() uint64 {
+func (sys *Sysutils) GetMemoryTotal() uint64 {
 	return sys.memoryInfo.Total
 }
 
-func (sys *sysutils) GetMemoryUsed() uint64 {
+func (sys *Sysutils) GetMemoryUsed() uint64 {
 	return sys.memoryInfo.Used
 }
 
-func (sys *sysutils) GetMemoryFree() uint64 {
+func (sys *Sysutils) GetMemoryFree() uint64 {
 	return sys.memoryInfo.Free
 }
 
-func (sys *sysutils) GetArchitecture() string {
+func (sys *Sysutils) GetArchitecture() string {
 	return sys.hostInfo.Architecture
 }
-func (sys *sysutils) GetNativeArchitecture() string {
+func (sys *Sysutils) GetNativeArchitecture() string {
 	return sys.hostInfo.NativeArchitecture
 }
-func (sys *sysutils) GetKernelVersion() string {
+func (sys *Sysutils) GetKernelVersion() string {
 	return sys.hostInfo.KernelVersion
 }
-func (sys *sysutils) GetUniqueID() string {
+func (sys *Sysutils) GetUniqueID() string {
 	uuid := strings.Replace(sys.hostInfo.UniqueID, "-", "", -1)
 	return uuid
 }
 
-func (sys *sysutils) GetBootTime() time.Time {
+func (sys *Sysutils) GetBootTime() time.Time {
 	return sys.hostInfo.BootTime.UTC()
 }
 
-func (sys *sysutils) GetIPs() []string {
+func (sys *Sysutils) GetIPs() []string {
 	return sys.hostInfo.IPs
 }
-func (sys *sysutils) GetMACs() []string {
+func (sys *Sysutils) GetMACs() []string {
 	return sys.hostInfo.MACs
 }
-func (sys *sysutils) GetContainerized() *bool {
+func (sys *Sysutils) GetContainerized() *bool {
 	return sys.hostInfo.Containerized
 }
-func (sys *sysutils) GetTimezoneOffsetSec() int {
+func (sys *Sysutils) GetTimezoneOffsetSec() int {
 	return sys.hostInfo.TimezoneOffsetSec
 }
 
-func NewSysutils() (*sysutils, error) {
+func NewSysutils() (*Sysutils, error) {
 	host, err := sysinfo.Host()
 	if err != nil {
-		return &sysutils{}, err
+		return &Sysutils{}, err
 	}
 	hostInfo := host.Info()
 	osInfo := hostInfo.OS
 
 	cputime, err := host.CPUTime()
 	if err != nil {
-		return &sysutils{}, err
+		return &Sysutils{}, err
 	}
 
 	memoryInfo, err := host.Memory()
 	if err != nil {
-		return &sysutils{}, err
+		return &Sysutils{}, err
 	}
 
-	return &sysutils{host: host, hostInfo: hostInfo, osInfo: osInfo,
+	return &Sysutils{host: host, hostInfo: hostInfo, osInfo: osInfo,
 		cputime: cputime, memoryInfo: memoryInfo}, nil
 }

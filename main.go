@@ -13,58 +13,28 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
+	if err := loadEnv(); err != nil {
 		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
+		time.Sleep(5 * time.Second)
 		return
 	}
 
-	sysutil, err := Extension.NewSysutils()
+	_, uuid, err := initSysutil()
 	if err != nil {
 		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
-		return
-	}
-	uuid, err := HSProtocol.HexStringToByteArray(sysutil.GetUniqueID())
-	if err != nil {
-		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
+		time.Sleep(5 * time.Second)
 		return
 	}
 
-	// 새로 생성된 에이전트를 등록
-	hsItem := HSProtocol.HS{
-		ProtocolID:     HSProtocol.HTTP, //
-		HealthStatus:   HSProtocol.NEW,  //
-		Command:        HSProtocol.UPDATE_AGENT_STATUS,
-		Identification: 12345, // 아직 구현 안함
-		Checksum:       0,     // 자동으로 채워줌
-		TotalLength:    0,     // 자동으로 채워줌
-		UUID:           uuid,
-		Data:           []byte{},
-	}
-	ack, err := Network.SendPacket(hsItem)
-	if err != nil {
+	if err := registerAgent(uuid); err != nil {
 		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
-		return
-	}
-	if ack.Command == HSProtocol.ERROR_ACK {
+		time.Sleep(5 * time.Second)
 		return
 	}
 
-	// stage 1 : 초기 정보 수집 단계 (정찰)
-	err = Network.SendApplicationInfo()
-	if err != nil {
+	if err := collectInitialInfo(); err != nil {
 		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
-		return
-	}
-	err = Network.SendSystemInfo()
-	if err != nil {
-		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-		time.Sleep(5)
+		time.Sleep(5 * time.Second)
 		return
 	}
 
@@ -72,82 +42,138 @@ func main() {
 	for {
 		fmt.Print("fetch instruction : ")
 		time.Sleep(3 * time.Second)
-		agsdb, err := Model.NewAgentStatusDB()
-		if err != nil {
-			fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
-			time.Sleep(5)
-			return
-		}
-		agsRcrd, err := agsdb.SelectAllRecords()
-		protocol := agsRcrd[0].Protocol
-		// ======= stage 2. fetch Data =========
-		hsItem := HSProtocol.HS{
-			ProtocolID:     uint8(protocol),
-			HealthStatus:   HSProtocol.RUN,
-			Command:        HSProtocol.FETCH_INSTRUCTION,
-			Identification: 12345,
-			Checksum:       6789,
-			TotalLength:    50,
-			UUID:           uuid,
-			Data:           []byte{},
-		}
-		inst := &Core.InstructionData{}
-		ack, err := Network.SendPacket(hsItem)
-		if err != nil {
-			fmt.Println("Error : ", err)
+		if err := executeCommand(uuid); err != nil {
+			fmt.Println("Error during command execution: ", err)
 			continue
-		}
-
-		instD, err := inst.GetInstData(ack.Data)
-		if err != nil {
-			fmt.Println("Error : ", err)
-			continue
-		}
-
-		if len(ack.Data) < 1 {
-			fmt.Println("... NoData Wait")
-			continue
-		}
-		fmt.Println("... success")
-
-		// ======= stage 3. run Command =========
-		err = Core.ChangeStatusToRun(&hsItem)
-		if err != nil {
-			fmt.Println("Error : ", err)
-			continue
-		}
-		shell := Execute.Cmd{}
-		cmdLog, err := shell.Execute(instD.Command)
-		fmt.Println("cmdLog : " + cmdLog)
-		if err != nil {
-			err = Network.SendLogData(&hsItem, cmdLog, instD, Network.EXIT_FAIL)
-			if err != nil {
-				fmt.Println("Error : ", err)
-				continue
-			}
-			fmt.Printf("commmand: %b \n", ack.Command)
-			continue
-		}
-
-		cmdLog, err = shell.Execute(instD.Cleanup)
-		if err != nil {
-			fmt.Println("Error : ", err)
-		}
-
-		if ack.Command == HSProtocol.ERROR_ACK {
-			fmt.Println("Status 정보 변경 실패")
 		}
 	}
 }
 
-// ToJSON: 구조체를 JSON 바이트로 마샬링
-//func (s *ApplicationDB) ToJSON(data []DapplicationDB) ([]byte, error) {
-//	return json.Marshal(data)
-//}
-//
-//// FromJSON: JSON 바이트를 구조체로 언마샬링
-//func (s *ApplicationDB) FromJSON(data []byte) ([]DapplicationDB, error) {
-//	var result []DapplicationDB
-//	err := json.Unmarshal(data, &result)
-//	return result, err
-//}
+func loadEnv() error {
+	err := godotenv.Load()
+	if err != nil {
+		return fmt.Errorf("(5 초뒤 종료)에러 발생 : %v", err)
+	}
+	return nil
+}
+
+func initSysutil() (*Extension.Sysutils, [16]byte, error) {
+	sysutil, err := Extension.NewSysutils()
+	if err != nil {
+		return nil, [16]byte{}, fmt.Errorf("시스템 유틸리티 초기화 실패: %v", err)
+	}
+
+	uuid, err := HSProtocol.HexStringToByteArray(sysutil.GetUniqueID())
+	if err != nil {
+		return nil, [16]byte{}, fmt.Errorf("UUID 변환 실패: %v", err)
+	}
+
+	return sysutil, uuid, nil
+}
+
+func registerAgent(uuid [16]byte) error {
+	hsItem := HSProtocol.HS{
+		ProtocolID:     HSProtocol.HTTP,
+		HealthStatus:   HSProtocol.NEW,
+		Command:        HSProtocol.UPDATE_AGENT_STATUS,
+		Identification: 12345,
+		Checksum:       0,
+		TotalLength:    0,
+		UUID:           uuid,
+		Data:           []byte{},
+	}
+
+	ack, err := Network.SendPacket(hsItem)
+	if err != nil {
+		return fmt.Errorf("에이전트 등록 실패: %v", err)
+	}
+
+	if ack.Command == HSProtocol.ERROR_ACK {
+		return fmt.Errorf("에이전트 등록 에러")
+	}
+
+	return nil
+}
+
+func collectInitialInfo() error {
+	if err := Network.SendApplicationInfo(); err != nil {
+		return fmt.Errorf("응용 프로그램 정보 전송 실패: %v", err)
+	}
+
+	if err := Network.SendSystemInfo(); err != nil {
+		return fmt.Errorf("시스템 정보 전송 실패: %v", err)
+	}
+
+	return nil
+}
+
+func executeCommand(uuid [16]byte) error {
+	agsdb, err := Model.NewAgentStatusDB()
+	if err != nil {
+		return fmt.Errorf("에이전트 상태 DB 오류: %v", err)
+	}
+
+	agsRcrd, err := agsdb.SelectAllRecords()
+	if err != nil {
+		return fmt.Errorf("상태 기록 조회 실패: %v", err)
+	}
+
+	protocol := agsRcrd[0].Protocol
+	hsItem := HSProtocol.HS{
+		ProtocolID:     uint8(protocol),
+		HealthStatus:   HSProtocol.RUN,
+		Command:        HSProtocol.FETCH_INSTRUCTION,
+		Identification: 12345,
+		Checksum:       6789,
+		TotalLength:    50,
+		UUID:           uuid,
+		Data:           []byte{},
+	}
+
+	ack, err := Network.SendPacket(hsItem)
+	if err != nil {
+		return fmt.Errorf("패킷 전송 실패: %v", err)
+	}
+
+	inst := &Core.InstructionData{}
+	instD, err := inst.GetInstData(ack.Data)
+	if err != nil {
+		return fmt.Errorf("명령어 데이터 처리 실패: %v", err)
+	}
+
+	if len(ack.Data) < 1 {
+		fmt.Println("... NoData Wait")
+		return nil
+	}
+
+	fmt.Println("... success")
+
+	if err := runCommand(instD, hsItem); err != nil {
+		return fmt.Errorf("명령어 실행 실패: %v", err)
+	}
+
+	return nil
+}
+
+func runCommand(instD *Core.InstructionData, hsItem HSProtocol.HS) error {
+	if err := Core.ChangeStatusToRun(&hsItem); err != nil {
+		return fmt.Errorf("상태 변경 실패: %v", err)
+	}
+
+	shell := Execute.Cmd{} // 해당 부분 코드를 powershell 도 실핼 수 있게 수정할 것
+	cmdLog, err := shell.Execute(instD.Command)
+	fmt.Println("cmdLog : " + cmdLog)
+	if err != nil {
+		if err := Network.SendLogData(&hsItem, cmdLog, instD, Network.EXIT_FAIL); err != nil {
+			return fmt.Errorf("실행 로그 전송 실패: %v", err)
+		}
+		return fmt.Errorf("명령어 실행 중 에러: %v", err)
+	}
+
+	cmdLog, err = shell.Execute(instD.Cleanup)
+	if err != nil {
+		fmt.Println("Cleanup 명령어 실행 에러: ", err)
+	}
+
+	return nil
+}
