@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-func sendPacketByTcp(hs HSProtocol.HS) (*HSProtocol.HS, error) {
+func SendPacketByTcp(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 	// TCP 서버에 연결
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {

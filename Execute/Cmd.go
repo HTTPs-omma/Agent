@@ -1,42 +1,53 @@
 package Execute
 
 import (
-	"fmt"
-	"golang.org/x/text/encoding/korean"
-	"golang.org/x/text/transform"
-	"io/ioutil"
+	"bytes"
 	"os/exec"
-	"strings"
 )
 
 type Cmd struct {
-	isAvailable bool
+	cmd *exec.Cmd
 }
 
-/*
-파워셀을 빠르게 사용해보자 : https://stackoverflow.com/questions/65331558/how-to-call-powershell-from-go-faster
-*/
+func NewCmd() *Cmd {
+	return &Cmd{
+		cmd: exec.Command("cmd", "/C"),
+	}
+}
+
 func (c *Cmd) Execute(command string) (string, error) {
-	// setting
-	fmt.Println("cmd : " + command)
-	cmd := exec.Command("cmd", "/C", command)
-	output, err := cmd.Output()
+	// 프로세스의 stdin, stdout, stderr에 파이프를 연결
+	stdin, err := c.cmd.StdinPipe()
 	if err != nil {
 		return "", err
 	}
 
-	decodedOutput, err := decodeCP949(output)
+	var outBuf, errBuf bytes.Buffer
+	c.cmd.Stdout = &outBuf
+	c.cmd.Stderr = &errBuf
+
+	// 프로세스 시작
+	err = c.cmd.Start()
 	if err != nil {
 		return "", err
 	}
 
-	return string(decodedOutput), nil
-}
-func decodeCP949(input []byte) (string, error) {
-	reader := transform.NewReader(strings.NewReader(string(input)), korean.EUCKR.NewDecoder())
-	decoded, err := ioutil.ReadAll(reader)
+	// 명령어 입력을 파이프로 보내기
+	_, err = stdin.Write([]byte(command + "\n"))
 	if err != nil {
 		return "", err
 	}
-	return string(decoded), nil
+	stdin.Close() // 입력 스트림 종료
+
+	// 프로세스 실행 완료 대기
+	err = c.cmd.Wait()
+	if err != nil {
+		return "", err
+	}
+
+	// 명령 실행 후 결과 반환
+	if errBuf.Len() > 0 {
+		return errBuf.String(), nil
+	}
+	return outBuf.String(), nil
 }

@@ -11,9 +11,6 @@ import (
 // Protocol 유형을 정의합니다.
 type Protocol uint8
 
-// AgentStatus 유형을 정의합니다.
-type AgentStatus int
-
 type AgentStatusDB struct {
 	dbName string
 }
@@ -21,7 +18,7 @@ type AgentStatusDB struct {
 type AgentStatusRecord struct {
 	ID        int
 	UUID      string
-	Status    AgentStatus
+	Status    int
 	Protocol  Protocol
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -147,7 +144,7 @@ func (s *AgentStatusDB) UpdateRecord(data *AgentStatusRecord) error {
 	return nil
 }
 
-func (s *AgentStatusDB) UpdateStatus(status AgentStatus) error {
+func (s *AgentStatusDB) UpdateStatus(status int) error {
 	db, err := getDBPtr()
 	if err != nil {
 		return err
@@ -213,14 +210,14 @@ func (s *AgentStatusDB) ExistRecord() (bool, error) {
 	return exists, nil
 }
 
-func (s *AgentStatusDB) getAgentStatus() (AgentStatus, error) {
+func (s *AgentStatusDB) getAgentStatus() (int, error) {
 	db, err := getDBPtr()
 	if err != nil {
 		return 0, err
 	}
 	defer db.Close()
 
-	var status AgentStatus
+	var status int
 	query := fmt.Sprintf(`SELECT status FROM %s LIMIT 1`, s.dbName)
 	err = db.QueryRow(query).Scan(&status)
 	if err != nil {

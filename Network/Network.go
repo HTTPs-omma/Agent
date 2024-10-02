@@ -17,7 +17,7 @@ func SendPacket(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 
 	switch record.Protocol {
 	case HSProtocol.TCP:
-		return sendPacketByTcp(hs)
+		return SendPacketByTcp(hs)
 	case HSProtocol.HTTP:
 		return sendPacketByHttp(hs)
 	}

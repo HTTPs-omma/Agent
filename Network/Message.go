@@ -1,13 +1,15 @@
 package Network
 
 import (
-	"agent/Core"
 	"agent/Extension"
 	"agent/Model"
 	"encoding/json"
 	"fmt"
 	"github.com/HTTPs-omma/HTTPsBAS-HSProtocol/HSProtocol"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"log"
+	"net"
+	"strings"
 	"time"
 )
 
@@ -70,13 +72,24 @@ const (
 	EXIT_FAIL    = -1
 )
 
-func SendLogData(hs *HSProtocol.HS, cmdLog string, instD *Core.InstructionData, resultCode int) error {
+type InstructionData struct {
+	ID               string `yaml:"id"`
+	MITREID          string `yaml:"MITRE_ID"`
+	Description      string `yaml:"Description"`
+	Escalation       bool   `yaml:"Escalation"`
+	Tool             string `yaml:"tool"`
+	RequisiteCommand string `yaml:"requisite_command"`
+	Command          string `yaml:"command"`
+	Cleanup          string `yaml:"cleanup"`
+}
+
+func SendLogData(hs *HSProtocol.HS, cmdLog string, command string, PID string, resultCode int) error {
 
 	logD, err := json.Marshal(&OperationLogDocument{
 		ID:              primitive.ObjectID{},
-		Command:         instD.Command,
+		Command:         command,
 		AgentUUID:       HSProtocol.ByteArrayToHexString(hs.UUID),
-		ProcedureID:     instD.ID,
+		ProcedureID:     PID,
 		InstructionUUID: "",
 		ConductAt:       time.Now(),
 		Log:             cmdLog,
@@ -162,7 +175,7 @@ func SendApplicationInfo() error {
 		}
 
 		hsItem := HSProtocol.HS{
-			ProtocolID:     HSProtocol.TCP,
+			ProtocolID:     HSProtocol.UNKNOWN, // 자동으로 채워줌
 			HealthStatus:   HSProtocol.NEW,
 			Command:        HSProtocol.SEND_AGENT_APP_INFO,
 			Identification: 12345, // 아직 구현 안함
@@ -185,11 +198,56 @@ func SendApplicationInfo() error {
 	return nil
 }
 
+// ByChatgpt
+func getIPv4AndMAC() (string, string, error) {
+	// 시스템의 모든 네트워크 인터페이스 가져오기
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		log.Fatalf("네트워크 인터페이스를 가져오는 데 실패했습니다: %v", err)
+	}
+
+	// 이더넷 및 Wi-Fi 인터페이스만 출력
+	for _, i := range interfaces {
+		// 네트워크 인터페이스가 활성화되어 있고, 루프백이 아닌 경우 필터링
+		if i.Flags&net.FlagUp != 0 && i.Flags&net.FlagLoopback == 0 && !strings.Contains(i.Name, "VMware") {
+			fmt.Printf("인터페이스 이름: %s\n", i.Name)
+
+			// MAC 주소 출력 (만약 존재한다면)
+			if i.HardwareAddr != nil {
+				fmt.Printf("MAC 주소: %s\n", i.HardwareAddr)
+			} else {
+				return "", "", fmt.Errorf("MAC 주소 없음")
+			}
+
+			// 네트워크 인터페이스에 연결된 주소 가져오기
+			addrs, err := i.Addrs()
+			if err != nil {
+				return "", "", fmt.Errorf("인터페이스 %s의 주소를 가져오는 데 실패했습니다: %v", i.Name, err)
+
+			}
+
+			for _, addr := range addrs {
+				fmt.Printf("주소: %v\n", addr)
+			}
+			fmt.Println("-----------------------------")
+
+			return addrs[1].String(), i.HardwareAddr.String(), nil
+		}
+	}
+	return "", "", fmt.Errorf("활성화된 인터페이스 카드가 없음!")
+}
+
 func SendSystemInfo() error {
 	sysdb := Model.NewSystemInfoDB()
 	sysuil, err := Extension.NewSysutils()
 	if err != nil {
 		return err
+	}
+
+	var ip, mac string
+	if ip, mac, err = getIPv4AndMAC(); err != nil {
+		ip = ""
+		mac = ""
 	}
 
 	sysInfo := &Model.DsystemInfoDB{
@@ -202,6 +260,8 @@ func SendSystemInfo() error {
 		sysuil.GetArchitecture(),
 		sysuil.GetKernelVersion(),
 		sysuil.GetBootTime(),
+		ip,
+		mac,
 		time.Now(),
 		time.Now(),
 	}

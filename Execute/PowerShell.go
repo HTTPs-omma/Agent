@@ -1,18 +1,29 @@
 package Execute
 
-import "os/exec"
+import (
+	"fmt"
+	"os/exec"
+)
 
 type PowerShell struct {
 	Name        string
 	IsAvailable bool
 }
 
+func NewPowerShell() *PowerShell {
+	return &PowerShell{
+		Name:        "PowerShell",
+		IsAvailable: true,
+	}
+}
+
 func (p *PowerShell) Execute(command string) (string, error) {
-	// setting
 	cmd := exec.Command("powershell", "-Command", command)
-	output, err := cmd.Output()
+
+	// 표준 출력 및 표준 에러를 함께 캡처
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("command execution failed: %s, error: %w", string(output), err)
 	}
 
 	return string(output), nil
