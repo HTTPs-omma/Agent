@@ -150,10 +150,6 @@ func (s *SystemInfoDB) UpdateRecord(data *DsystemInfoDB) error {
 	return nil
 }
 
-func GetSystemInfoData() {
-	// 여기에 시스템 정보를 가져오는 로직을 추가
-}
-
 func (s *SystemInfoDB) SelectRecords() ([]DsystemInfoDB, error) {
 	db, err := getDBPtr()
 	if err != nil {
@@ -171,7 +167,6 @@ func (s *SystemInfoDB) SelectRecords() ([]DsystemInfoDB, error) {
 
 	for row.Next() {
 		var data DsystemInfoDB
-
 		err = row.Scan(&data.ID, &data.Uuid, &data.HostName, &data.OsName, &data.OsVersion, &data.Family, &data.Architecture, &data.KernelVersion, &data.BootTime, &data.IP, &data.MAC, &data.CreatedAt, &data.UpdatedAt)
 		if err != nil {
 			return nil, err

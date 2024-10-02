@@ -30,6 +30,7 @@ func sendPacketByHttp(hs HSProtocol.HS) (*HSProtocol.HS, error) {
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+
 	if err != nil {
 		fmt.Println("Error making HTTP request:", err)
 		return nil, err

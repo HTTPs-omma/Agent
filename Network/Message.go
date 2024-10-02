@@ -267,13 +267,11 @@ func SendSystemInfo() error {
 	}
 	fmt.Printf("해당 PC UUID : ")
 	fmt.Println(sysuil.GetUniqueID())
-	fmt.Println("sysInfo : " + sysInfo.Uuid)
 
 	err = sysdb.InsertRecord(sysInfo)
 	if err != nil {
 		return err
 	}
-
 	uuid, err := HSProtocol.HexStringToByteArray(sysuil.GetUniqueID())
 	if err != nil {
 		return fmt.Errorf("HexStringToByteArray error : %v", err)
@@ -290,6 +288,7 @@ func SendSystemInfo() error {
 		UUID:           uuid,
 		Data:           bsysinfo,
 	}
+
 	ack, err := SendPacket(hsItem)
 	if err != nil {
 		return err

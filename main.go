@@ -13,6 +13,16 @@ import (
 	"time"
 )
 
+type AgentAction string
+
+const (
+	ExecutePayLoad string = "ExecutePayLoad"
+	ExecuteCleanUp string = "ExecuteCleanUp"
+	GetSystemInfo  string = "GetSystemInfo"
+	GetApplication string = "GetApplication"
+	StopAgent      string = "StopAgent"
+)
+
 func main() {
 
 	if err := loadEnv(); err != nil {
@@ -33,7 +43,6 @@ func main() {
 		time.Sleep(5 * time.Second)
 		return
 	}
-
 	if err := collectInitialInfo(); err != nil {
 		fmt.Println("(5 초뒤 종료)에러 발생 : " + err.Error())
 		time.Sleep(5 * time.Second)
@@ -137,7 +146,7 @@ func executeCommand(uuid [16]byte) error {
 		return fmt.Errorf("패킷 전송 실패: %v", err)
 	}
 
-	inst := &Core.InstructionData{}
+	inst := &Core.ExtendedInstructionData{}
 	instD, err := inst.GetInstData(ack.Data)
 	if err != nil {
 		return fmt.Errorf("명령어 데이터 처리 실패: %v", err)
@@ -153,35 +162,30 @@ func executeCommand(uuid [16]byte) error {
 		return err
 	}
 
-	switch ack.Command {
-	case HSProtocol.EXECUTE_PAYLOAD:
+	switch instD.AgentAction {
+	case ExecutePayLoad:
 		if err := runCommand(instD, hsItem); err != nil {
 			return fmt.Errorf("명령어 실행 실패: %v", err)
 		}
-	case HSProtocol.EXECUTE_CLEANUP:
-		if err := runCommand(instD, hsItem); err != nil {
+	case ExecuteCleanUp:
+		if err := runCleanup(instD, hsItem); err != nil {
 			return fmt.Errorf("명령어 실행 실패: %v", err)
 		}
-	case HSProtocol.UPDATE_AGENT_STATUS:
-		agsdb, err := Model.NewAgentStatusDB()
-		if err != nil {
-			return err
+	case GetApplication:
+		if err := Network.SendApplicationInfo(); err != nil {
+			return fmt.Errorf("명령어 실행 실패: %v", err)
 		}
-		if err = agsdb.UpdateStatus(int(ack.HealthStatus)); err != nil {
-			return err
+	case GetSystemInfo:
+		if err := Network.SendSystemInfo(); err != nil {
+			return fmt.Errorf("명령어 실행 실패: %v", err)
 		}
-		if ack.HealthStatus == HSProtocol.DELETED {
-			if err = Core.ChangeStatusToDeleted(ack); err != nil {
-				return err
-			}
-			fmt.Println("===== 종료 요청 받음 =========")
-			time.Sleep(3 * time.Second)
-			os.Exit(0)
+	case StopAgent:
+		if err := Core.ChangeStatusToDeleted(ack); err != nil {
+			return fmt.Errorf("명령어 실행 실패: %v", err)
 		}
-	case HSProtocol.GET_APPLICATION:
-		Network.SendApplicationInfo()
-	case HSProtocol.GET_SYSTEMINFO:
-		Network.SendSystemInfo()
+		fmt.Println("잠시후 종료...")
+		time.Sleep(5 * time.Second)
+		os.Exit(0)
 	}
 
 	if err = Core.ChangeStatusToWait(ack); err != nil {
@@ -191,7 +195,7 @@ func executeCommand(uuid [16]byte) error {
 	return nil
 }
 
-func runCommand(instD *Core.InstructionData, hsItem HSProtocol.HS) error {
+func runCommand(instD *Core.ExtendedInstructionData, hsItem HSProtocol.HS) error {
 	if err := Core.ChangeStatusToRun(&hsItem); err != nil {
 		return fmt.Errorf("상태 변경 실패: %v", err)
 	}
@@ -206,21 +210,18 @@ func runCommand(instD *Core.InstructionData, hsItem HSProtocol.HS) error {
 	cmdLog, err := shell.Execute(instD.Command)
 	fmt.Println("cmdLog : " + cmdLog)
 	if err != nil {
-		if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
+		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
 			return fmt.Errorf("실행 로그 전송 실패: %v", err)
 		}
 		return fmt.Errorf("명령어 실행 중 에러: %v", err)
 	}
-
-	cmdLog, err = shell.Execute(instD.Cleanup)
-	if err != nil {
-		fmt.Println("Cleanup 명령어 실행 에러: ", err)
+	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_SUCCESS); err != nil {
+		return fmt.Errorf("실행 로그 전송 실패: %v", err)
 	}
-
 	return nil
 }
 
-func runCleanup(instD *Core.InstructionData, hsItem HSProtocol.HS) error {
+func runCleanup(instD *Core.ExtendedInstructionData, hsItem HSProtocol.HS) error {
 	if err := Core.ChangeStatusToRun(&hsItem); err != nil {
 		return fmt.Errorf("상태 변경 실패: %v", err)
 	}
@@ -235,10 +236,13 @@ func runCleanup(instD *Core.InstructionData, hsItem HSProtocol.HS) error {
 	cmdLog, err := shell.Execute(instD.Cleanup)
 	fmt.Println("cmdLog : " + cmdLog)
 	if err != nil {
-		if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
+		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
 			return fmt.Errorf("실행 로그 전송 실패: %v", err)
 		}
 		return fmt.Errorf("명령어 실행 중 에러: %v", err)
+	}
+	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_SUCCESS); err != nil {
+		return fmt.Errorf("실행 로그 전송 실패: %v", err)
 	}
 	return nil
 }

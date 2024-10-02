@@ -18,12 +18,13 @@ func NewPowerShell() *PowerShell {
 }
 
 func (p *PowerShell) Execute(command string) (string, error) {
+	fmt.Println("run Poershell Code : " + command)
 	cmd := exec.Command("powershell", "-Command", command)
 
 	// 표준 출력 및 표준 에러를 함께 캡처
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("command execution failed: %s, error: %w", string(output), err)
+		return string(output), fmt.Errorf("command execution failed: %s, error: %w", string(output), err)
 	}
 
 	return string(output), nil
