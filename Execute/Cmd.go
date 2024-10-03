@@ -1,9 +1,13 @@
 package Execute
 
 import (
-	"bytes"
 	"fmt"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/transform"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 type Cmd struct {
@@ -14,28 +18,45 @@ func NewCmd() *Cmd {
 	return &Cmd{}
 }
 
-// Execute: 명령어를 실행하고 결과를 반환하는 함수
 func (c *Cmd) Execute(command string) (string, error) {
-	// 명령어 실행
-	fmt.Println("run Cmd Code : " + command)
-
-	// cmd /C 와 함께 명령어 실행
-	// 리디렉션 사용을 위해 명령어를 따옴표로 묶어 실행합니다
-	cmd := exec.Command("cmd", "/C", command)
-
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-
-	// 명령어 실행
-	err := cmd.Run()
+	// 임시 배치 파일 생성
+	batchFileName := "executeCommand.bat"
+	batchFile, err := os.Create(batchFileName)
 	if err != nil {
-		return errBuf.String(), fmt.Errorf("failed to execute command: %w", err)
+		fmt.Println("Error creating batch file:", err)
+		return "", err
+	}
+	defer os.Remove(batchFileName) // 실행 후 배치 파일 삭제
+
+	// 배치 파일에 명령어 작성
+	_, err = batchFile.WriteString(command)
+	if err != nil {
+		fmt.Println("Error writing to batch file:", err)
+		return "", err
 	}
 
-	// 명령어 출력 결과 반환
-	if errBuf.Len() > 0 {
-		return errBuf.String(), nil
+	// 배치 파일 닫기
+	err = batchFile.Close()
+	if err != nil {
+		fmt.Println("Error closing batch file:", err)
+		return "", err
 	}
-	return outBuf.String(), nil
+
+	// 배치 파일 실행
+	cmd := exec.Command("cmd", "/C", batchFileName)
+	output, err := cmd.CombinedOutput()
+	decodedOutput, _ := decodeCP949(output)
+	if err != nil {
+		return decodedOutput, err
+	}
+
+	return decodedOutput, nil
+}
+func decodeCP949(input []byte) (string, error) {
+	reader := transform.NewReader(strings.NewReader(string(input)), korean.EUCKR.NewDecoder())
+	decoded, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
 }

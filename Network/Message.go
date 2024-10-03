@@ -56,14 +56,14 @@ func SendErrorAck(hs *HSProtocol.HS) error {
 }
 
 type OperationLogDocument struct {
-	ID              primitive.ObjectID `bson:"_id,omitempty"`
-	AgentUUID       string             `bson:"agentUUID"`
-	ProcedureID     string             `bson:"procedureID"`
-	InstructionUUID string             `bson:"instructionUUID"`
-	ConductAt       time.Time          `bson:"conductAt"`
-	ExitCode        int                `bson:"exitCode"`
-	Log             string             `bson:"log"`
-	Command         string             `bson:"command"` // Command 필드로 변경
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	AgentUUID   string             `bson:"agentUUID"`
+	ProcedureID string             `bson:"procedureID"`
+	MessageUUID string             `bson:"messageUUID"`
+	ConductAt   time.Time          `bson:"conductAt"`
+	ExitCode    int                `bson:"exitCode"`
+	Log         string             `bson:"log"`
+	Command     string             `bson:"command"` // Command 필드로 변경
 }
 
 const (
@@ -83,17 +83,17 @@ type InstructionData struct {
 	Cleanup          string `yaml:"cleanup"`
 }
 
-func SendLogData(hs *HSProtocol.HS, cmdLog string, command string, PID string, resultCode int) error {
+func SendLogData(hs *HSProtocol.HS, cmdLog string, command string, PID string, messageUUID string, resultCode int) error {
 
 	logD, err := json.Marshal(&OperationLogDocument{
-		ID:              primitive.ObjectID{},
-		Command:         command,
-		AgentUUID:       HSProtocol.ByteArrayToHexString(hs.UUID),
-		ProcedureID:     PID,
-		InstructionUUID: "",
-		ConductAt:       time.Now(),
-		Log:             cmdLog,
-		ExitCode:        resultCode,
+		ID:          primitive.ObjectID{},
+		Command:     command,
+		AgentUUID:   HSProtocol.ByteArrayToHexString(hs.UUID),
+		ProcedureID: PID,
+		MessageUUID: messageUUID,
+		ConductAt:   time.Now(),
+		Log:         cmdLog,
+		ExitCode:    resultCode,
 	})
 	if err != nil {
 		fmt.Println("Error : ", err)

@@ -10,6 +10,7 @@ import (
 	"github.com/HTTPs-omma/HTTPsBAS-HSProtocol/HSProtocol"
 	"github.com/joho/godotenv"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -161,7 +162,9 @@ func executeCommand(uuid [16]byte) error {
 	if err = Core.ChangeStatusToRun(ack); err != nil {
 		return err
 	}
-
+	instD.Command = replacePlaceholder(instD.Command)
+	instD.Cleanup = replacePlaceholder(instD.Cleanup)
+	//fmt.Println(instD.AgentAction)
 	switch instD.AgentAction {
 	case ExecutePayLoad:
 		if err := runCommand(instD, hsItem); err != nil {
@@ -208,17 +211,26 @@ func runCommand(instD *Core.ExtendedInstructionData, hsItem HSProtocol.HS) error
 	}
 
 	cmdLog, err := shell.Execute(instD.Command)
-	fmt.Println("cmdLog : " + cmdLog)
+	fmt.Println("Log : " + cmdLog)
 	if err != nil {
-		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
+		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, instD.MessageUUID, Network.EXIT_FAIL); err != nil {
 			return fmt.Errorf("실행 로그 전송 실패: %v", err)
 		}
 		return fmt.Errorf("명령어 실행 중 에러: %v", err)
 	}
-	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_SUCCESS); err != nil {
+	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, instD.MessageUUID, Network.EXIT_SUCCESS); err != nil {
 		return fmt.Errorf("실행 로그 전송 실패: %v", err)
 	}
 	return nil
+}
+
+func replacePlaceholder(command string) string {
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable path:", err)
+		return command
+	}
+	return strings.ReplaceAll(command, "#{C:\\Path\\To\\agent.exe}", exePath)
 }
 
 func runCleanup(instD *Core.ExtendedInstructionData, hsItem HSProtocol.HS) error {
@@ -236,12 +248,12 @@ func runCleanup(instD *Core.ExtendedInstructionData, hsItem HSProtocol.HS) error
 	cmdLog, err := shell.Execute(instD.Cleanup)
 	fmt.Println("cmdLog : " + cmdLog)
 	if err != nil {
-		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, Network.EXIT_FAIL); err != nil {
+		if err := Network.SendLogData(&hsItem, err.Error(), instD.Command, instD.ID, instD.MessageUUID, Network.EXIT_FAIL); err != nil {
 			return fmt.Errorf("실행 로그 전송 실패: %v", err)
 		}
 		return fmt.Errorf("명령어 실행 중 에러: %v", err)
 	}
-	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, Network.EXIT_SUCCESS); err != nil {
+	if err := Network.SendLogData(&hsItem, cmdLog, instD.Command, instD.ID, instD.MessageUUID, Network.EXIT_SUCCESS); err != nil {
 		return fmt.Errorf("실행 로그 전송 실패: %v", err)
 	}
 	return nil
